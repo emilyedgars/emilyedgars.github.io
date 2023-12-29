@@ -1,0 +1,262 @@
+import pandas as pd
+import random
+import numpy as np
+
+def creatdata():
+    random.seed(42)
+
+    num_houses = 1000
+
+    locations = ['Chueca', 'Gran Vía', 'Salamanca', 'Chamberí', 'Chamartín']
+
+    data = {
+        'Location': [random.choice(locations) for _ in range(num_houses)],
+        'Price': [round(random.uniform(300, 3000), 2) for _ in range(num_houses)],
+        'Rooms': [random.randint(1, 5) for _ in range(num_houses)],
+        'Bathrooms': [random.randint(1, 3) for _ in range(num_houses)],
+        'Area': [round(random.uniform(80, 400), 2) for _ in range(num_houses)],
+        'Pets': [random.choice(['yes', 'no']) for _ in range(num_houses)]
+    }
+    # Ensure that 80% of the houses don't allow pets
+    data['Pets'].count('no') >= 0.8 * num_houses
+
+    # Ensure that the number of bathrooms is <= number of rooms
+    data['Bathrooms'] = [min(rooms, bathrooms) for rooms, bathrooms in zip(data['Rooms'], data['Bathrooms'])]
+
+    # Ensure that #rooms makes sense with the area
+    data['Rooms'] = [min(5, max(1, round(area / 100))) for area in data['Area']]
+
+    # Ensure 30% of houses have an area > 250 and more than 3 rooms
+    criteria_met = 0
+    while criteria_met < 0.3 * num_houses:
+        index = random.randint(0, num_houses - 1)
+        if data['Area'][index] > 250 and data['Rooms'][index] > 3:
+            continue
+        data['Area'][index] = round(random.uniform(250, 400), 2)
+        data['Rooms'][index] = random.randint(4, 5)
+        criteria_met += 1
+
+    # Ensure 80% of houses have a monthly rent below 2000
+
+    data['Price'] = [round(min(random.uniform(300, 3000), 2000), 2) for _ in range(num_houses)]
+    return pd.DataFrame(data)
+
+def quicksort(indices, my_list, property_values=None):
+    # If property_values is not provided, initialize it based on my_list
+    if property_values is None:
+        property_values = [my_list[i] for i in indices]
+
+    # Base case: if the length of indices is less than 2, return indices
+    if len(indices) < 2:
+        return indices
+    else:
+        higher = []
+        lower = []
+
+        # Choose a random pivot index and remove it from indices
+        pivot_index = indices.pop(random.randrange(0, len(indices)))
+        pivot_value = property_values[pivot_index]
+
+        # Iterate through indices and partition them based on pivot_value
+        for i in indices:
+            if property_values[i] > pivot_value:
+                higher.append(i)
+            elif property_values[i] < pivot_value:
+                lower.append(i)
+
+        # Recursively apply quicksort on lower and higher partitions
+        return quicksort(lower, my_list, property_values) + [pivot_index] + quicksort(higher, my_list, property_values)
+
+def binary_search(item, my_list, sorted_indices):
+    min_idx = 0
+    max_idx = len(sorted_indices) - 1
+
+    closest_idx = None
+
+    while max_idx >= min_idx:
+        middle = (min_idx + max_idx) // 2
+        if my_list[sorted_indices[middle]] == item:
+            return sorted_indices[middle]
+        elif my_list[sorted_indices[middle]] > item:
+            max_idx = middle - 1
+        elif my_list[sorted_indices[middle]] < item:
+            closest_idx = sorted_indices[middle]
+            min_idx = middle + 1
+
+    return closest_idx
+
+def filter_houses_by_budget(houses_data, min_price, max_price):
+    prices = houses_data['Price'].tolist()
+    indices = list(range(len(prices)))
+
+    # Sort indices based on prices using quicksort
+    sorted_indices = quicksort(indices, prices)
+
+    # Iterate through the sorted indices to find the min and max indices
+    min_idx = None
+    max_idx = None
+    for i, idx in enumerate(sorted_indices):
+        if prices[idx] >= min_price and min_idx is None:
+            min_idx = i
+        if prices[idx] > max_price and max_idx is None:
+            max_idx = i
+
+    if min_idx is not None and max_idx is not None:
+        # Use the range to get the corresponding rows in the original DataFrame
+        filtered_indices = sorted_indices[min_idx:max_idx]
+        filtered_houses = houses_data.iloc[filtered_indices]
+        return filtered_houses
+    else:
+        return pd.DataFrame()
+
+def filter_houses_by_area(houses_data, min_area, max_area):
+    areas = houses_data['Area'].tolist()
+    indices = list(range(len(areas)))
+
+    # Sort indices based on areas using quicksort
+    sorted_indices = quicksort(indices, areas)
+
+
+    # Iterate through the sorted indices to find the min and max indices
+    min_idx = None
+    max_idx = None
+    for i, idx in enumerate(sorted_indices):
+        if areas[idx] >= min_area and min_idx is None:
+            min_idx = i
+        if areas[idx] > max_area and max_idx is None:
+            max_idx = i
+
+    if min_idx is not None and max_idx is not None:
+        # Use the range to get the corresponding rows in the original DataFrame
+        filtered_indices = sorted_indices[min_idx:max_idx]
+        filtered_houses = houses_data.iloc[filtered_indices]
+        return filtered_houses
+    else:
+        return pd.DataFrame()
+
+def filter_house_by_pet(house_data, pet_preference):
+    if pet_preference == 'yes':
+        selected_rows = house_data[house_data['Pets'] == 'yes']
+        return selected_rows
+    else:
+        selected_rows = house_data[house_data['Pets'] == 'no']
+        return selected_rows
+
+def filter_house_by_rooms(house_data, roomnumber):
+    filtered_houses = house_data.loc[house_data['Rooms'] == roomnumber]
+    return filtered_houses
+
+def user_data():
+    # Ask if the user wants to find a roommate with a perfect match
+    find_roommate = input("Would you like to find a roommate with a perfect match? (yes/no): ")
+
+    if find_roommate.lower() == 'yes':
+        # Gather user information
+        print("Great! Let's find you a perfect roommate.")
+        name = input("Enter your name: ")
+        gender = input("Enter your gender (female/male/other): ")
+        age = int(input("Enter your age: "))
+        extraversion = input("Enter your extraversion level (Introvert/Extrovert/Ambivert): ")
+        pet_preference = input("Do you want a house that allows pets? (yes/no): ")
+        region = input("Where are you from? (North America/South America/Europe/Africa/Asia-Pacific): ")
+        budget = float(input("What is your maximum budget for an apartment?: "))
+        location = input("What is your preferred location for an apartment? (Chueca/Gran Via/Salamanca/Chamberí/Chamartín): ")
+
+        # Create a dictionary with user information
+        user_info = {
+            'Name': [name],
+            'Gender': [gender],
+            'Age': [age],
+            'Extraversion': [extraversion],
+            'Pets': [pet_preference],
+            'Region': [region],
+            'Budget': [budget],
+            'Location': [location]
+        }
+
+        # Create a DataFrame from the user information
+        user_df = pd.DataFrame(user_info)
+
+        # Append the new user information to the existing CSV file
+        return user_df
+
+    else:
+        print("Let's proceed without finding a roommate, here is a list of possible houses according to your interests!")
+        return None  # Return None to indicate no user information
+    return user_df
+
+from google.colab import files
+import pandas as pd
+
+# Upload the 'roommates.csv' file
+uploaded = files.upload()
+
+# Read the uploaded file into a DataFrame
+all_users_df = pd.read_csv(next(iter(uploaded)))
+
+# Display the first few rows of the DataFrame
+all_users_df.head()
+
+def find_roommates(user_df, all_users_df):
+    # Extract user preferences
+    user_extraversion = user_df['Extraversion'].iloc[0]
+    user_pets = user_df['Pets'].iloc[0]
+    user_region = user_df['Region'].iloc[0]
+    user_location = user_df['Location'].iloc[0]
+
+
+    # Filter potential roommates based on compatibility
+    potential_roommates = all_users_df[
+        (all_users_df['Pets'] == user_pets) &
+        (all_users_df['Region'] == user_region) &
+        (all_users_df['Location'] == user_location)
+    ]
+
+    return potential_roommates
+
+def gender_preference(user_df, all_users_df):
+    user_gender = user_df['Gender'].iloc[0]
+    potential_roommates = all_users_df[all_users_df['Gender'] == user_gender]
+    return potential_roommates
+
+
+def main():
+    houses_data = creatdata()
+    print(houses_data.head())
+
+    print("Above is a quick look at our data \n")
+
+    # Get user preferences
+    min_price, max_price = map(float, input("What is your budget range(separate by comma): ").split(","))
+    filtered_houses = filter_houses_by_budget(houses_data, min_price, max_price)
+
+    min_area, max_area = map(float, input("What is the size of the apartment you are looking for? (specify in square meters and separate by comma): ").split(","))
+    filtered_houses = filter_houses_by_area(filtered_houses, min_area, max_area)
+
+    pet_preference = input("Do you have a pet? (yes/no): ")
+    filtered_houses = filter_house_by_pet(filtered_houses, pet_preference)
+
+    roomnum = int(input("How many rooms do you want in your apartment: "))
+    filtered_houses = filter_house_by_rooms(filtered_houses, roomnum)
+
+    # Get user data
+    user_df = user_data()
+
+    if user_df is not None:
+        # Display user data
+        print("\nUser Information:\n")
+        print(user_df)
+
+    print("\nHere is a list of possible houses according to your interests:\n")
+    print(filtered_houses)
+
+    print('\n')
+    dataset = all_users_df
+    roommates = find_roommates(user_df, dataset)
+    gender_pref = input("Do you want to be matched to the same gender (yes/no): ")
+    if gender_pref == 'yes':
+        print("Potential Roommates:\n", gender_preference(user_df, roommates))
+    else:
+        print("Potential Roommates:\n", roommates)
+
+main()
